@@ -4,6 +4,8 @@ import { config } from "./config.js";
 const app = express();
 const PORT = 8080;
 
+// Built-in JSON body parsing middleware
+app.use(express.json());
 //Logging Responses
 app.use(middlewareLogResponses);
 
@@ -49,46 +51,52 @@ function reset(req: Request, res: Response) {
 }
 
 function validateChirp(req: Request, res: Response) {
-  let bodyEm = ""; // 1. Initialize
+  type parameters = {
+    body: string;
+  };
 
-  // 2. Listen for data events
-  req.on("data", (chunk) => {
-    bodyEm += chunk;
-  });
+  try {
+    const params: parameters = req.body;
 
-  // 3. Listen for end events
-  req.on("end", () => {
-    try {
-      const parsedBody = JSON.parse(bodyEm);
-      if (typeof parsedBody.body !== "string") {
-        return res
-          .status(400)
-          .send(JSON.stringify({ error: "Body must be a string" }));
-      }
-      if (parsedBody.body.length > 140) {
-        return res.status(400).send(
-          JSON.stringify({
-            error: "Chirp is too long",
-          }),
-        );
-      }
-
-      return res.status(200).send(
-        JSON.stringify({
-          valid: true,
-        }),
-      );
-    } catch (error) {
+    if (params.body.length > 140) {
       return res.status(400).send(
         JSON.stringify({
-          error: "Something went wrong",
+          error: "Chirp is too long",
         }),
       );
     }
-  });
+
+    const trimBody = params.body.trim();
+    const splitBody = trimBody.split(" ");
+    const cleanBody = splitBody.map((word) => {
+      if (
+        word.toLowerCase() === "kerfuffle" ||
+        word.toLowerCase() === "sharbert" ||
+        word.toLowerCase() === "fornax"
+      ) {
+        return "****";
+      }
+      return word;
+    });
+
+    const joinedBody = cleanBody.join(" ");
+
+    return res.status(200).send(
+      JSON.stringify({
+        cleanedBody: joinedBody,
+      }),
+    );
+  } catch (error) {
+    return res.status(400).send(
+      JSON.stringify({
+        error: "Something went wrong",
+      }),
+    );
+  }
 }
 
 //middleware
+
 function middlewareLogResponses(
   req: Request,
   res: Response,

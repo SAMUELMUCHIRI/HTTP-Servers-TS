@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { config } from "./config.js";
+import { TooLongError } from "./error.js";
 
 export async function reset(req: Request, res: Response) {
   config.fileserverHits = 0;
@@ -20,7 +21,7 @@ export async function validateChirp(
     const params: parameters = req.body;
 
     if (params.body.length > 140) {
-      throw new Error("Chirp is too long");
+      throw new TooLongError("Chirp is too long");
     }
 
     const trimBody = params.body.trim();
@@ -70,7 +71,13 @@ export function errorHandler(
   res: Response,
   next: NextFunction,
 ) {
-  res.status(500).json({
-    error: "Something went wrong on our end",
-  });
+  if (err instanceof TooLongError) {
+    res.status(400).json({
+      error: "Chirp is too long. Max length is 140",
+    });
+  } else {
+    res.status(500).json({
+      error: "Something went wrong on our end",
+    });
+  }
 }

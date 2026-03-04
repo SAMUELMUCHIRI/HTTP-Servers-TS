@@ -3,3 +3,9 @@ export class TooLongError extends Error {
     super(message);
   }
 }
+
+export class InvalidEmailError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}

@@ -1,0 +1,1 @@
+ALTER TABLE "chrips" RENAME TO "chirps";

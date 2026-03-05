@@ -15,3 +15,9 @@ export class LoginError extends Error {
     super(message);
   }
 }
+
+export class TokenError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}

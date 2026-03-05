@@ -4,13 +4,23 @@ import { TooLongError, InvalidEmailError, LoginError } from "./error.js";
 import { createUser, getUser, resetUser } from "./db/queries/users.js";
 import { createChirp, allChirps, getChirp } from "./db/queries/chirps.js";
 import type { NewUser } from "./db/schema.js";
-import { hashPassword, checkPasswordHash } from "./auth.js";
+import {
+  hashPassword,
+  checkPasswordHash,
+  makeJWT,
+  validateJWT,
+  getBearerToken,
+} from "./auth.js";
 
 type ChirpQuery = {
   chirpId: string;
 };
 
 type createNewuser = Omit<NewUser, "hashedPassword">;
+
+type loginUser = Omit<NewUser, "hashedPassword"> & {
+  token: string;
+};
 
 export async function createChirpHandler(
   req: Request,
@@ -19,10 +29,21 @@ export async function createChirpHandler(
 ) {
   type parameters = {
     body: string;
-    userId: string;
   };
 
   try {
+    const token = getBearerToken(req);
+
+    if (!token) {
+      throw new Error("No Authorization header");
+    }
+
+    const user = validateJWT(token, config.secretSign);
+    console.log(user);
+    if (!user) {
+      throw new Error("Invalid token");
+    }
+
     const params: parameters = req.body;
 
     if (params.body.length > 140) {
@@ -45,7 +66,7 @@ export async function createChirpHandler(
     const joinedBody = cleanBody.join(" ");
     const Chirp = await createChirp({
       body: joinedBody,
-      userId: params.userId,
+      userId: user,
     });
 
     return res.status(201).send(
@@ -141,8 +162,12 @@ export async function loginUserHandler(
     password: string;
   };
 
+  type parametersTime = Required<parameters> &
+    Partial<{
+      expiresInSeconds: number;
+    }>;
   try {
-    const params: Required<parameters> = req.body;
+    const params: Required<parametersTime> = req.body;
 
     const userdetail = await getUser(params.email);
 
@@ -157,12 +182,20 @@ export async function loginUserHandler(
     if (!check) {
       throw new LoginError("incorrect email or password");
     }
+    let jwtToken: string;
+    if ("expiresInSeconds" in params) {
+      const { expiresInSeconds } = params;
+      jwtToken = makeJWT(userdetail.id, expiresInSeconds, config.secretSign);
+    } else {
+      jwtToken = makeJWT(userdetail.id, 3600, config.secretSign);
+    }
 
-    const response: createNewuser = {
+    const response: loginUser = {
       id: userdetail.id,
       createdAt: userdetail.createdAt,
       updatedAt: userdetail.updatedAt,
       email: userdetail.email,
+      token: jwtToken,
     };
     return res.status(200).json(response);
   } catch (err) {

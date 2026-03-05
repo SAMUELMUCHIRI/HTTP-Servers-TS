@@ -4,7 +4,9 @@ import {
   validateJWT,
   hashPassword,
   checkPasswordHash,
+  getBearerToken,
 } from "../auth.js";
+import type { Request } from "express";
 
 describe("Password Hashing", () => {
   const password1 = "correctPassword123!";
@@ -49,5 +51,69 @@ describe("Create JWT", () => {
     const token = makeJWT(userID, 1, secret);
     vi.advanceTimersByTime(2000); // move time forward
     expect(() => validateJWT(token, secret)).toThrowError();
+  });
+});
+
+describe("getBearerToken", () => {
+  it("returns the token when Authorization header is valid", () => {
+    const req = {
+      url: "/api/test",
+      headers: {
+        authorization: "Bearer abc123",
+      },
+      get: (header: string) => {
+        if (header === "Authorization") {
+          return "Bearer abc123";
+        }
+        return undefined;
+      },
+    } as unknown as Request;
+
+    const token = getBearerToken(req);
+
+    expect(token).toBe("abc123");
+  });
+
+  it("throws if Authorization header is missing", () => {
+    const req = {
+      url: "/api/test",
+
+      get: (header: string) => {
+        if (header === "Authorization") {
+          return undefined;
+        }
+        return undefined;
+      },
+    } as unknown as Request;
+
+    expect(() => getBearerToken(req)).toThrow("No Authorization header");
+  });
+
+  it("throws if Authorization type is not Bearer", () => {
+    const req = {
+      url: "/api/test",
+      headers: {
+        authorization: "Basic abc123",
+      },
+      get: (header: string) => {
+        if (header === "Authorization") {
+          return "Basic abc123";
+        }
+        return undefined;
+      },
+    } as unknown as Request;
+
+    expect(() => getBearerToken(req)).toThrow("Invalid Authorization header");
+  });
+
+  it("throws if Bearer token is missing", () => {
+    const req = {
+      url: "/api/test",
+      headers: {
+        authorization: "Bearer",
+      },
+    } as unknown as Request;
+
+    expect(() => getBearerToken(req)).toThrow();
   });
 });

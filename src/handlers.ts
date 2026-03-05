@@ -3,15 +3,21 @@ import { config } from "./config.js";
 import { TooLongError, InvalidEmailError, LoginError } from "./error.js";
 import { createUser, getUser, resetUser } from "./db/queries/users.js";
 import { createChirp, allChirps, getChirp } from "./db/queries/chirps.js";
-import type { NewUser } from "./db/schema.js";
+import {
+  createRefreshToken,
+  getRefreshToken,
+  revokeRefreshToken,
+} from "./db/queries/tokens.js";
+import type { NewUser, NewRefreshToken } from "./db/schema.js";
 import {
   hashPassword,
   checkPasswordHash,
   makeJWT,
   validateJWT,
   getBearerToken,
+  makeRefreshToken,
 } from "./auth.js";
-
+import { TokenError } from "./error.js";
 type ChirpQuery = {
   chirpId: string;
 };
@@ -20,6 +26,7 @@ type createNewuser = Omit<NewUser, "hashedPassword">;
 
 type loginUser = Omit<NewUser, "hashedPassword"> & {
   token: string;
+  refreshToken: string;
 };
 
 export async function createChirpHandler(
@@ -34,14 +41,10 @@ export async function createChirpHandler(
   try {
     const token = getBearerToken(req);
 
-    if (!token) {
-      throw new Error("No Authorization header");
-    }
-
     const user = validateJWT(token, config.secretSign);
-    console.log(user);
+
     if (!user) {
-      throw new Error("Invalid token");
+      return res.status(401).send();
     }
 
     const params: parameters = req.body;
@@ -162,10 +165,7 @@ export async function loginUserHandler(
     password: string;
   };
 
-  type parametersTime = Required<parameters> &
-    Partial<{
-      expiresInSeconds: number;
-    }>;
+  type parametersTime = Required<parameters>;
   try {
     const params: Required<parametersTime> = req.body;
 
@@ -183,12 +183,17 @@ export async function loginUserHandler(
       throw new LoginError("incorrect email or password");
     }
     let jwtToken: string;
-    if ("expiresInSeconds" in params) {
-      const { expiresInSeconds } = params;
-      jwtToken = makeJWT(userdetail.id, expiresInSeconds, config.secretSign);
-    } else {
-      jwtToken = makeJWT(userdetail.id, 3600, config.secretSign);
-    }
+
+    jwtToken = makeJWT(userdetail.id, 3600, config.secretSign);
+    const refresh_Token = makeRefreshToken();
+    const days = 60;
+
+    const newRefreshToken: NewRefreshToken = {
+      userId: userdetail.id,
+      token: refresh_Token,
+      expiresAt: new Date(Date.now() + days * 24 * 60 * 60 * 1000),
+    };
+    const resultToken = await createRefreshToken(newRefreshToken);
 
     const response: loginUser = {
       id: userdetail.id,
@@ -196,8 +201,59 @@ export async function loginUserHandler(
       updatedAt: userdetail.updatedAt,
       email: userdetail.email,
       token: jwtToken,
+      refreshToken: refresh_Token,
     };
     return res.status(200).json(response);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function refreshTokenHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const token = getBearerToken(req);
+
+    if (!token) {
+      throw new Error("No Authorization header");
+    }
+
+    const refreshToken = await getRefreshToken(token);
+
+    if (
+      !refreshToken ||
+      refreshToken.expiresAt < new Date() ||
+      refreshToken.revokedAt
+    ) {
+      return res.status(401).send();
+    }
+
+    const jwtToken = makeJWT(refreshToken.userId, 3600, config.secretSign);
+
+    return res.status(200).send(
+      JSON.stringify({
+        token: jwtToken,
+      }),
+    );
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function revokeTokenHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const token = getBearerToken(req);
+
+    const refreshToken = await revokeRefreshToken(token);
+
+    return res.status(204).send();
   } catch (err) {
     next(err);
   }
@@ -248,6 +304,8 @@ export function errorHandler(
     res.status(401).json({
       error: "incorrect email or password",
     });
+  } else if (err instanceof TokenError) {
+    res.status(401).send();
   } else {
     res.status(500).json({
       error: "Something went wrong on our end",

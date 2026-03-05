@@ -36,6 +36,13 @@
       "when": 1772635701059,
       "tag": "0004_pink_speedball",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1772711256253,
+      "tag": "0005_goofy_blue_shield",
+      "breakpoints": true
     }
   ]
 }

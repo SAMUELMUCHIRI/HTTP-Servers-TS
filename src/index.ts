@@ -13,6 +13,7 @@ import {
   createUserHandler,
   allChirpsHandler,
   getChirpHandler,
+  loginUserHandler,
 } from "./handlers.js";
 
 const app = express();
@@ -33,9 +34,13 @@ app.use("/app", express.static("./src/app"));
 // API endpoints
 app.get("/api/healthz", healthHandler);
 app.post("/api/chirps", createChirpHandler);
-app.post("/api/users", createUserHandler);
+
 app.get("/api/chirps", allChirpsHandler);
 app.get("/api/chirps/:chirpId", getChirpHandler);
+//authentication
+app.post("/api/login", loginUserHandler);
+app.post("/api/users", createUserHandler);
+
 // Admin endpoints
 app.get("/admin/metrics", hits);
 app.post("/admin/reset", reset);

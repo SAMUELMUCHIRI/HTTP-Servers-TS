@@ -1,13 +1,16 @@
 import { Request, Response, NextFunction } from "express";
 import { config } from "./config.js";
-import { TooLongError, InvalidEmailError } from "./error.js";
-import { createUser, resetUser } from "./db/queries/users.js";
+import { TooLongError, InvalidEmailError, LoginError } from "./error.js";
+import { createUser, getUser, resetUser } from "./db/queries/users.js";
 import { createChirp, allChirps, getChirp } from "./db/queries/chirps.js";
 import type { NewUser } from "./db/schema.js";
+import { hashPassword, checkPasswordHash } from "./auth.js";
 
 type ChirpQuery = {
   chirpId: string;
 };
+
+type createNewuser = Omit<NewUser, "hashedPassword">;
 
 export async function createChirpHandler(
   req: Request,
@@ -101,26 +104,67 @@ export async function createUserHandler(
 ) {
   type parameters = {
     email: string;
+    password: string;
   };
+
   try {
-    const params: parameters = req.body;
+    const params: Required<parameters> = req.body;
 
     if (params.email.length < 2) {
       throw new InvalidEmailError("Email is too short");
     }
     const newUser: NewUser = {
       email: params.email,
+      hashedPassword: await hashPassword(params.password),
     };
     const user = await createUser(newUser);
+    const response: createNewuser = {
+      id: user.id,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      email: user.email,
+    };
 
-    return res.status(201).send(
-      JSON.stringify({
-        id: user.id,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-        email: user.email,
-      }),
+    return res.status(201).json(response);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function loginUserHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  type parameters = {
+    email: string;
+    password: string;
+  };
+
+  try {
+    const params: Required<parameters> = req.body;
+
+    const userdetail = await getUser(params.email);
+
+    if (!userdetail) {
+      throw new LoginError("incorrect email or password");
+    }
+    const check = await checkPasswordHash(
+      params.password,
+      userdetail.hashedPassword,
     );
+
+    if (!check) {
+      throw new LoginError("incorrect email or password");
+    }
+
+    const response: createNewuser = {
+      id: userdetail.id,
+      createdAt: userdetail.createdAt,
+      updatedAt: userdetail.updatedAt,
+      email: userdetail.email,
+    };
+    return res.status(200).json(response);
   } catch (err) {
     next(err);
   }
@@ -150,6 +194,7 @@ export async function reset(req: Request, res: Response) {
   if (process.env.PLATFORM !== "dev") {
     return res.status(403).send("Forbidden");
   }
+
   const delUsers = await resetUser();
   config.fileserverHits = 0;
   res.contentType("text/plain");
@@ -165,6 +210,10 @@ export function errorHandler(
   if (err instanceof TooLongError) {
     res.status(400).json({
       error: "Chirp is too long. Max length is 140",
+    });
+  } else if (err instanceof LoginError) {
+    res.status(401).json({
+      error: "incorrect email or password",
     });
   } else {
     res.status(500).json({

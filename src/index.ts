@@ -14,6 +14,8 @@ import {
   allChirpsHandler,
   getChirpHandler,
   loginUserHandler,
+  refreshTokenHandler,
+  revokeTokenHandler,
 } from "./handlers.js";
 
 const app = express();
@@ -40,6 +42,8 @@ app.get("/api/chirps/:chirpId", getChirpHandler);
 //authentication
 app.post("/api/login", loginUserHandler);
 app.post("/api/users", createUserHandler);
+app.post("/api/refresh", refreshTokenHandler);
+app.post("/api/revoke", revokeTokenHandler);
 
 // Admin endpoints
 app.get("/admin/metrics", hits);

@@ -2,6 +2,8 @@ import * as argon2 from "argon2";
 import jwt from "jsonwebtoken";
 import type { JwtPayload } from "jsonwebtoken";
 import type { Request } from "express";
+import * as crypto from "node:crypto";
+import { TokenError } from "./error.js";
 
 type payload = Pick<JwtPayload, "iss" | "sub" | "iat" | "exp">;
 
@@ -48,7 +50,7 @@ export function validateJWT(tokenString: string, secret: string): string {
     const decoded = jwt.verify(tokenString, secret) as Required<payload>;
     return decoded.sub;
   } catch (err) {
-    throw new Error("Failed to validate JWT");
+    throw new TokenError("Failed to validate JWT");
   }
 }
 
@@ -66,4 +68,13 @@ export function getBearerToken(req: Request): string {
     throw new Error("Invalid Authorization header");
   }
   return token;
+}
+
+export function makeRefreshToken(): string {
+  try {
+    const buf = crypto.randomBytes(256);
+    return buf.toString("hex");
+  } catch (err) {
+    throw new Error("Failed to generate refresh token");
+  }
 }

@@ -70,6 +70,22 @@ export function getBearerToken(req: Request): string {
   return token;
 }
 
+export function getAPIKey(req: Request): string {
+  const authHeader = req.get("Authorization");
+  if (!authHeader) {
+    throw new TokenError("No Authorization header");
+  }
+  const [type, token] = authHeader.split(" ");
+  if (type !== "ApiKey") {
+    throw new TokenError("Invalid API Key");
+  }
+
+  if (!token) {
+    throw new TokenError("Invalid API Key");
+  }
+  return token;
+}
+
 export function makeRefreshToken(): string {
   try {
     const buf = crypto.randomBytes(256);

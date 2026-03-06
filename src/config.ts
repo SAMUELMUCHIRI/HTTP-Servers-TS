@@ -11,7 +11,10 @@ type APIConfig = {
   fileserverHits: number;
 };
 
-export const config: DBConfig & APIConfig & SecretConfig = {
+type ApiConfig = {
+  PolkaKey: string;
+};
+export const config: DBConfig & APIConfig & SecretConfig & ApiConfig = {
   db: {
     url: envOrThrow("DB_URL"),
     migrationConfig: {
@@ -20,10 +23,7 @@ export const config: DBConfig & APIConfig & SecretConfig = {
   },
   fileserverHits: 0,
   secretSign: envOrThrow("SECRET_SIGN"),
-};
-
-const migrationConfig: MigrationConfig = {
-  migrationsFolder: "./src/db/migrations",
+  PolkaKey: envOrThrow("POLKA_KEY"),
 };
 
 function envOrThrow(key: string): string {

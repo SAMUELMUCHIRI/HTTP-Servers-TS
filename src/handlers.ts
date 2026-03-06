@@ -33,6 +33,7 @@ import {
   validateJWT,
   getBearerToken,
   makeRefreshToken,
+  getAPIKey,
 } from "./auth.js";
 import { TokenError } from "./error.js";
 type ChirpQuery = {
@@ -325,6 +326,10 @@ export async function upgradeUserHandler(
   };
 
   try {
+    const token = getAPIKey(req);
+    if (token !== config.PolkaKey) {
+      return res.status(401).send();
+    }
     const { event, data } = req.body as Required<parameters>;
     if (event !== "user.upgraded") {
       return res.status(204).send();

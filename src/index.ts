@@ -16,6 +16,7 @@ import {
   loginUserHandler,
   refreshTokenHandler,
   revokeTokenHandler,
+  upgradeUserHandler,
 } from "./handlers.js";
 
 const app = express();
@@ -44,6 +45,7 @@ app.post("/api/login", loginUserHandler);
 app.post("/api/users", createUserHandler);
 app.post("/api/refresh", refreshTokenHandler);
 app.post("/api/revoke", revokeTokenHandler);
+app.post("/api/polka/webhooks", upgradeUserHandler);
 
 // Admin endpoints
 app.get("/admin/metrics", hits);

@@ -21,3 +21,9 @@ export class TokenError extends Error {
     super(message);
   }
 }
+
+export class UserNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}

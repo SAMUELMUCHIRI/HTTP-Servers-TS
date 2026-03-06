@@ -9,15 +9,16 @@ import {
   hits,
   reset,
   createChirpHandler,
+  getChirpHandler,
+  allChirpsHandler,
+  deleteChirpHandler,
   errorHandler,
   createUserHandler,
-  allChirpsHandler,
-  getChirpHandler,
   loginUserHandler,
-  refreshTokenHandler,
-  revokeTokenHandler,
   upgradeUserHandler,
   updateUserHandler,
+  refreshTokenHandler,
+  revokeTokenHandler,
 } from "./handlers.js";
 
 const app = express();
@@ -41,6 +42,7 @@ app.post("/api/chirps", createChirpHandler);
 
 app.get("/api/chirps", allChirpsHandler);
 app.get("/api/chirps/:chirpId", getChirpHandler);
+app.delete("/api/chirps/:chirpId", deleteChirpHandler);
 //authentication
 app.post("/api/login", loginUserHandler);
 app.post("/api/users", createUserHandler);

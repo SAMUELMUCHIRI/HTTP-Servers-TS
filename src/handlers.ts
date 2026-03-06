@@ -14,7 +14,12 @@ import {
   getUserByID,
   updateUser,
 } from "./db/queries/users.js";
-import { createChirp, allChirps, getChirp } from "./db/queries/chirps.js";
+import {
+  createChirp,
+  allChirps,
+  getChirp,
+  deleteChirp,
+} from "./db/queries/chirps.js";
 import {
   createRefreshToken,
   getRefreshToken,
@@ -128,6 +133,40 @@ export async function getChirpHandler(
     }
 
     return res.status(200).json(chirp);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteChirpHandler(
+  req: Request<ChirpQuery>,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    //get chirp params
+    const { chirpId } = req.params;
+
+    //get chirp from db
+    const chirp = await getChirp(chirpId);
+    if (!chirp) {
+      return res.status(404).json({ error: "Chirp not found" });
+    }
+
+    //get token and validate
+    const token = getBearerToken(req);
+    const user = validateJWT(token, config.secretSign);
+    if (!user) {
+      return res.status(401).send();
+    }
+
+    //check if user is the author of the chirp
+    if (chirp.userId !== user) {
+      return res.status(403).send();
+    }
+
+    const deleteResult = await deleteChirp(chirpId);
+    return res.status(204).send();
   } catch (err) {
     next(err);
   }

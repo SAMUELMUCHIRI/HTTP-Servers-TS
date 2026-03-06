@@ -19,6 +19,7 @@ import {
   allChirps,
   getChirp,
   deleteChirp,
+  getAuthorChirp,
 } from "./db/queries/chirps.js";
 import {
   createRefreshToken,
@@ -110,6 +111,19 @@ export async function allChirpsHandler(
   next: NextFunction,
 ) {
   try {
+    const { authorId } = req.query;
+    if (authorId) {
+      if (typeof authorId !== "string") {
+        return res.status(400).json({ error: "Invalid authorId" });
+      }
+      const chirp = await getAuthorChirp(authorId);
+
+      if (!chirp) {
+        return res.status(404).json({ error: "Chirps not found" });
+      }
+
+      return res.status(200).json(chirp);
+    }
     const Chirps = await allChirps();
 
     res.contentType("text/plain");

@@ -20,6 +20,7 @@ import {
   getChirp,
   deleteChirp,
   getAuthorChirp,
+  allChirpsDesc,
 } from "./db/queries/chirps.js";
 import {
   createRefreshToken,
@@ -112,10 +113,12 @@ export async function allChirpsHandler(
 ) {
   try {
     const { authorId } = req.query;
+    const { sort } = req.query;
     if (authorId) {
       if (typeof authorId !== "string") {
         return res.status(400).json({ error: "Invalid authorId" });
       }
+
       const chirp = await getAuthorChirp(authorId);
 
       if (!chirp) {
@@ -123,11 +126,28 @@ export async function allChirpsHandler(
       }
 
       return res.status(200).json(chirp);
-    }
-    const Chirps = await allChirps();
+    } else if (sort) {
+      if (typeof sort !== "string" || !["asc", "desc"].includes(sort)) {
+        return res.status(400).json({ error: "Invalid sort" });
+      }
 
-    res.contentType("text/plain");
-    return res.status(200).json(Chirps);
+      if (sort === "asc") {
+        const chirps = await allChirps();
+
+        res.contentType("text/plain");
+        return res.status(200).json(chirps);
+      } else {
+        const chirps = await allChirpsDesc();
+
+        res.contentType("text/plain");
+        return res.status(200).json(chirps);
+      }
+    } else {
+      const Chirps = await allChirps();
+
+      res.contentType("text/plain");
+      return res.status(200).json(Chirps);
+    }
   } catch (err) {
     next(err);
   }

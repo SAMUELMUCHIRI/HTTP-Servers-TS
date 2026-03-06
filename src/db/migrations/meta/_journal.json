@@ -50,6 +50,20 @@
       "when": 1772722926747,
       "tag": "0006_little_charles_xavier",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1772743249692,
+      "tag": "0007_icy_boomer",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1772745249443,
+      "tag": "0008_nebulous_hiroim",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,19 @@
 import { Request, Response, NextFunction } from "express";
 import { config } from "./config.js";
-import { TooLongError, InvalidEmailError, LoginError } from "./error.js";
-import { createUser, getUser, resetUser } from "./db/queries/users.js";
+import {
+  TooLongError,
+  InvalidEmailError,
+  LoginError,
+  UserNotFoundError,
+} from "./error.js";
+import {
+  createUser,
+  getUser,
+  resetUser,
+  upgradeUser,
+  getUserByID,
+  updateUser,
+} from "./db/queries/users.js";
 import { createChirp, allChirps, getChirp } from "./db/queries/chirps.js";
 import {
   createRefreshToken,
@@ -147,6 +159,7 @@ export async function createUserHandler(
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       email: user.email,
+      isChirpyRed: user.isChirpyRed,
     };
 
     return res.status(201).json(response);
@@ -202,6 +215,7 @@ export async function loginUserHandler(
       email: userdetail.email,
       token: jwtToken,
       refreshToken: refresh_Token,
+      isChirpyRed: userdetail.isChirpyRed,
     };
     return res.status(200).json(response);
   } catch (err) {
@@ -259,6 +273,76 @@ export async function revokeTokenHandler(
   }
 }
 
+export async function upgradeUserHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  type parameters = {
+    event: string;
+    data: {
+      userId: string;
+    };
+  };
+
+  try {
+    const { event, data } = req.body as Required<parameters>;
+    if (event !== "user.upgraded") {
+      return res.status(204).send();
+    }
+    const { userId } = data;
+    const user = await getUserByID(userId);
+    if (!user) {
+      return res.status(404).send();
+    }
+    const upgradedUser = await upgradeUser(userId);
+    return res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateUserHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  type parameters = {
+    email: string;
+    password: string;
+  };
+
+  type parametersTime = Required<parameters>;
+  try {
+    //get token and validate
+    const token = getBearerToken(req);
+    const user = validateJWT(token, config.secretSign);
+
+    if (!user) {
+      return res.status(401).send();
+    }
+
+    //get body parameters
+    const params: Required<parametersTime> = req.body;
+
+    //Create password hash
+    const newUser: NewUser = {
+      email: params.email,
+      hashedPassword: await hashPassword(params.password),
+    };
+
+    //Update user
+    const updatedUser = await updateUser(user, newUser);
+    if (!updatedUser) {
+      return res.status(401).send();
+    }
+
+    //Return updated user
+    return res.status(200).json(updatedUser);
+  } catch (err) {
+    next(err);
+  }
+}
 //
 //Admin Handlers and Utilities
 //

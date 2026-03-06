@@ -30,6 +30,15 @@ export async function upgradeUser(id: string) {
   return result;
 }
 
+export async function updateUser(id: string, user: NewUser) {
+  const [result] = await db
+    .update(users)
+    .set({ email: user.email, hashedPassword: user.hashedPassword })
+    .where(eq(users.id, id))
+    .returning();
+  return result;
+}
+
 export async function resetUser() {
   const result = await db.delete(users).returning();
   return result;

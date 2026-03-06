@@ -57,15 +57,15 @@ export function validateJWT(tokenString: string, secret: string): string {
 export function getBearerToken(req: Request): string {
   const authHeader = req.get("Authorization");
   if (!authHeader) {
-    throw new Error("No Authorization header");
+    throw new TokenError("No Authorization header");
   }
   const [type, token] = authHeader.split(" ");
   if (type !== "Bearer") {
-    throw new Error("Invalid Authorization header");
+    throw new TokenError("Invalid Authorization header");
   }
 
   if (!token) {
-    throw new Error("Invalid Authorization header");
+    throw new TokenError("Invalid Authorization header");
   }
   return token;
 }
